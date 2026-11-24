@@ -1,0 +1,30 @@
+import { restaurantStore } from '../store/restaurantStore.js';
+let ioInstance = null;
+export function setupSocketHandlers(io) {
+    ioInstance = io;
+    io.on('connection', (socket) => {
+        console.log(`[Socket.io] Cliente conectado: ${socket.id}`);
+        // Send initial snapshot
+        socket.emit('sync:initial', {
+            tables: restaurantStore.getTables(),
+            reservations: restaurantStore.getReservations(),
+            notifications: restaurantStore.getNotifications(),
+            metrics: restaurantStore.getMetrics()
+        });
+        socket.on('disconnect', () => {
+            console.log(`[Socket.io] Cliente desconectado: ${socket.id}`);
+        });
+    });
+}
+export function broadcastStateChange(event, payload) {
+    if (ioInstance) {
+        ioInstance.emit(event, payload);
+        // Also always push the updated snapshot so state is 100% consistent across all clients
+        ioInstance.emit('sync:update', {
+            tables: restaurantStore.getTables(),
+            reservations: restaurantStore.getReservations(),
+            notifications: restaurantStore.getNotifications(),
+            metrics: restaurantStore.getMetrics()
+        });
+    }
+}
